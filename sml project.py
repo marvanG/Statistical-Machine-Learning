@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import csv
 import matplotlib.pyplot as plt
 import sklearn.tree
 from sklearn import tree
@@ -18,12 +19,31 @@ from matplotlib.image import imread
 # Nice options
 pd.set_option('display.width', 200)
 pd.set_option('display.max_columns', 20)  # see up to 15 columns
-pd.set_option('display.max_rows', 3000)  # see up to 15 columns
+pd.set_option('display.max_rows', 60)  # see up to 15 columns
 np.set_printoptions(suppress=True)  # shows 0.07 instead of 7*e^-2
 
 # Data preparation
-df = pd.read_csv(r'C:\Users\mariu\PycharmProjects\machineLearning\train.csv')  # read in data in a panda dataframe
+origin_df = pd.read_csv(
+    r'C:\Users\mariu\PycharmProjects\machineLearning\train.csv')  # read in data in a panda dataframe
 
+
+
+df = origin_df
+
+clasi = df['Lead']
+df = df.drop('Lead', axis=1)
+df['lead_colead_age_diff'] = df['Age Lead'] - df['Age Co-Lead']
+df['Lead'] = clasi
+
+# Set the random seed
+#np.random.seed(23)
+#df = df.sample(frac=1)
+
+df_test = df.iloc[0:240]
+y_safety = df_test['Lead']
+
+print(df_test['Lead'].head(10))
+#df = df.drop(df_test.index)
 
 
 # Analyse data
@@ -37,27 +57,6 @@ man_lead = two_gender_actor_movies[(two_gender_actor_movies['Lead'] == 'Male')]
 female_lead = two_gender_actor_movies[(two_gender_actor_movies['Lead'] == 'Female')]
 
 # print(two_female[(two_female['Lead'] == 'Female')])
-
-
-"""
-# One actor test
-# print(two_females.head(10))
-age_male = np.array(single_gender_actor_movies['Mean Age Male'])
-age_female = np.array(single_gender_actor_movies['Mean Age Female'])
-age_lead = np.array(single_gender_actor_movies['Age Lead'])
-y_test = np.array(single_gender_actor_movies['Lead'])
-words_male = np.array(single_gender_actor_movies['Number words male'])
-words_female = np.array(single_gender_actor_movies['Number words female'])
-number_men = np.array(single_gender_actor_movies['Number of male actors'])
-
-prediction = np.where((words_female == 0) | ((words_male != 0) & (number_men == 1)), 'Female', 'Male')
-accuracy = np.mean(prediction == y_test)
-print(f'accuracy: {accuracy} ')
-print(f'Old naive accuracy: 0.756 ')
-conf_matrix = pd.crosstab(prediction, y_test)
-print(f'{conf_matrix}\n')
-
-"""
 
 
 """
@@ -77,7 +76,7 @@ conf_matrix = pd.crosstab(prediction, y_test)
 print(f'{conf_matrix}\n')
 
 """
-# Compare to naive accuracy
+# split into subsets with math
 
 
 test_df = df
@@ -114,8 +113,6 @@ accuracy = np.mean(prediction == y_test)
 print(accuracy)
 """
 
-
-
 mask2 = (avg_female_word < 100) | (avg_female_word > colead_word)  # Lead female
 mask3 = (avg_male_word < 100) | (avg_male_word > colead_word)  # Lead male
 
@@ -133,8 +130,9 @@ actor_diff = m_actors - f_actors
 lead_age = np.array(test_df['Age Lead'])
 co_lead_age = np.array(test_df['Age Co-Lead'])
 age_difference = lead_age - co_lead_age
-mask4 = (actor_diff < -1) & (age_difference < -1) # Lead probably a female, 0.97%. Might be overfitting. Try with and without it. create a dummy instead?
 
+mask4 = (actor_diff < 0) & (
+        age_difference < -1)  # Lead probably a female, 0.97%. Might be overfitting. Try with and without it. create a dummy instead?
 subset4 = test_df[mask4]
 test_df = test_df.drop(subset4.index)
 
@@ -147,23 +145,19 @@ predictions2 = np.full(subset2.shape[0], 'Female')
 predictions3 = np.full(subset3.shape[0], 'Male')
 predictions4 = np.full(subset4.shape[0], 'Female')
 
-removed_count = predictions3.shape[0] + predictions2.shape[0] +predictions1.shape[0] +predictions4.shape[0]
-print(f'{predictions1.shape[0]} + {predictions2.shape[0]} + {predictions3.shape[0]} + {predictions4.shape[0]} = {removed_count}')
+removed_count = predictions3.shape[0] + predictions2.shape[0] + predictions1.shape[0] + predictions4.shape[0]
+print(
+    f'{predictions1.shape[0]} + {predictions2.shape[0]} + {predictions3.shape[0]} + {predictions4.shape[0]} = {removed_count}')
 
-
-print(f'{test_df.shape[0]} + {removed_count} = {removed_count+ test_df.shape[0]}')
+print(f'{test_df.shape[0]} + {removed_count} = {removed_count + test_df.shape[0]}')
 print('total: ')
-print(removed_count+test_df.shape[0])
+print(removed_count + test_df.shape[0])
 
 # testing
 classifier = test_df['Lead']
 z = np.zeros(test_df.shape[0])
 prediction = np.where(z == 0, 'Male', 'Male')
-
 accuracy = np.mean(prediction == classifier)
-
-print(f'\n{accuracy}')
-
 
 """
 false_positive_rows = test_df[(prediction == 'Male') & (y_test == 'Female')]
@@ -177,9 +171,11 @@ print(f'Old naive accuracy: 0.756 ')
 conf_matrix = pd.crosstab(prediction, classifier)
 print(f'{conf_matrix}\n')
 
-
-seeds = 1 # How many cross validations to run (more than 5 takes alot of time)
+seeds = 1  # How many cross validations to run (more than 5 takes alot of time)
 cut_off = 0.71
+df = test_df
+
+
 
 
 # Example of argument cut_off_accuracy: 0.8 stops the algorithm if accuracy gets below 0.8
@@ -255,7 +251,7 @@ def multiple_k_fold_cross_validation(data_frame, model, n):
 
 def k_fold_cross_validation(data_frame, model, seed):
     # Set the random seed
-    np.random.seed(seed+15)
+    np.random.seed(seed + 15)
 
     # Shuffle the rows of the dataframe
     data_frame = data_frame.sample(frac=1)
@@ -354,12 +350,13 @@ zeros = np.zeros((df.shape[0]))
 naive_prediction = np.where(zeros == 0, 'Male', '')
 y_naive_test = np.array(df['Lead'])
 naive_accuracy = np.mean(naive_prediction == y_naive_test)
-print(f'Old naive accuracy: {naive_accuracy}')
-
+print(f'New naive accuracy: {naive_accuracy}')
 
 # normalizing techniques
 # Drop classifier Lead
+# df = df.reset_index(drop=True)
 classifier = df['Lead']
+
 df_minus_classifier = df.drop('Lead', axis=1)
 
 # Basic normalization method:
@@ -383,20 +380,22 @@ df_standard['Lead'] = classifier
 
 # Store normalized dataframes (use to test normalization in compare_norms_and_models()
 
-df_array = [[df, 'Original df'], [df_min_max, 'Min-Max Scaler'],[df_robust, 'Robust Scaler']]
+
+# df_array = [[df, 'Original df'], [df_robust, 'Robust Scaler']]
 
 
-#[df_standard, 'Standard Scaler']
+# [df_standard, 'Standard Scaler']
 
 # df_array = [[df_standard, 'Standard Scaler']]
-#df_array = [[df_min_max, 'Min Max Norm']]
-#df_array = [[df_robust, 'Robust Scaler']]
+# df_array = [[df_min_max, 'Min Max Norm']]
+# df_array = [[df_robust, 'Robust Scaler']]
 # only standard, saves time and normalization sucked for Log Reg
-#df_array = [[df, 'Original df']]
+df_array = [[df, 'Original df']]
 
 # Create models
 # Logistic regression model
-model1 = skl_lm.LogisticRegression(solver='liblinear', penalty='l2', C=0.1)
+# model1 = skl_lm.LogisticRegression(solver='liblinear', penalty='l2', C=0.1)
+model1 = skl_lm.LogisticRegression(solver='liblinear')
 
 # Linear discriminant analysis
 model2 = skl_da.LinearDiscriminantAnalysis()
@@ -406,48 +405,55 @@ model3 = skl_da.QuadraticDiscriminantAnalysis()
 
 # Classification tree
 model4 = tree.DecisionTreeClassifier(max_depth=10, min_samples_split=10)
+# model4 = tree.DecisionTreeClassifier()
 
 # Bagging tree classifier
 decision_tree_base_estimator = tree.DecisionTreeClassifier(criterion='entropy', max_depth=10)
-# model5 = BaggingClassifier()
+model11 = BaggingClassifier()
 model5 = BaggingClassifier(estimator=decision_tree_base_estimator)
 
 # Random forest classifier
-model6 = RandomForestClassifier(max_depth=10, min_samples_split=6, n_estimators=200)
+# model6 = RandomForestClassifier(max_depth=10, min_samples_split=6, n_estimators=200)
+model6 = RandomForestClassifier()
 
 # KNN
 model7 = KNeighborsClassifier()
 
 # AdaBoosting
-b1 = tree.DecisionTreeClassifier(max_depth=8, min_samples_split=20, criterion='entropy')
+
 model8 = AdaBoostClassifier()
 
 # Gradient Boosting
 
 model9 = GradientBoostingClassifier(subsample=0.5, min_samples_split=25, n_estimators=200)
+model10 = GradientBoostingClassifier()
+# model9 = GradientBoostingClassifier()
+
 
 # Store models (to run comparisons)
 models = np.empty([0, 3])
 models = np.append(models, [[model1, 'Logistic regression', 0]], axis=0)
 models = np.append(models, [[model2, 'linear discriminant analysis', 0]], axis=0)
 models = np.append(models, [[model3, 'Quadratic discriminant analysis', 0]], axis=0)
-models = np.append(models, [[model4, 'Decision tree classifier', 0]], axis=0)
-models = np.append(models, [[model5, 'Bagging tree classifier', 0]], axis=0)
+# models = np.append(models, [[model4, 'Decision tree classifier', 0]], axis=0)
+models = np.append(models, [[model5, 'Bagging tree classifier modified', 0]], axis=0)
 models = np.append(models, [[model6, 'Random forest classifier', 0]], axis=0)
 models = np.append(models, [[model7, 'KNN', 0]], axis=0)
 models = np.append(models, [[model8, 'AdaBoosting classifier', 0]], axis=0)
-models = np.append(models, [[model9, 'Gradient boosting classifier', 0]], axis=0)
+models = np.append(models, [[model9, 'Gradient boosting classifier modified', 0]], axis=0)
+models = np.append(models, [[model10, 'Gradient boosting classifier default', 0]], axis=0)
+models = np.append(models, [[model11, 'Bagging tree classifier default', 0]], axis=0)
 # Run test, find the best normalization and features.
 
-#compare_norms_and_models(models, df_array)
+# compare_norms_and_models(models, df_array)
 
-
+"""
 # Logistic Regression
 # ['Gross' 'Mean Age Female']
 # Number words male
 # Parameter optimization
 # X and Y
-"""
+
 train_acc_list = np.array([])
 score_list = np.array([])
 test_acc_list = np.array([])
@@ -456,7 +462,7 @@ for i in range(10):
     np.random.seed(i)
     # Shuffle the rows of the dataframe
     df_shuffle = df.sample(frac=1)
-    X_test = df_shuffle.iloc[0:200]
+    X_test = df_shuffle.iloc[0:120]
     X_train = df_shuffle.drop(X_test.index)
     Y_test = X_test['Lead']
     Y_train = X_train['Lead']
@@ -465,8 +471,12 @@ for i in range(10):
     # Logistic regression
     # Optimizing Log Reg using grid search (built-in function that tests combinations of hyperparameters)
 
-    X_test = X_test.drop(['AgeDiff_1', 'Age Co-Lead', 'Number words male'], axis=1)
-    X_train = X_train.drop(['AgeDiff_1', 'Age Co-Lead', 'Number words male'], axis=1)
+    X_test = X_test.drop(['Mean Age Female', 'Difference in words lead and co-lead', 'Gross', 'Year',
+ 'Number of words lead', 'lead_colead_age_diff', 'Age Lead', 'Mean Age Male',
+ 'Number words male', 'Number words female'], axis=1)
+    X_train = X_train.drop(['Mean Age Female', 'Difference in words lead and co-lead', 'Gross', 'Year',
+ 'Number of words lead', 'lead_colead_age_diff', 'Age Lead', 'Mean Age Male',
+ 'Number words male', 'Number words female'], axis=1)
 
     # parameters, every combination will be tested for the best result.
     # 'C': np.logspace(-2, 2, 30)
@@ -647,7 +657,7 @@ print(f'Average train accuracy = {np.mean(train_acc_list)}')
 print(f'Average score = {np.mean(score_list)}')
 print(f'Average test accuracy = {np.mean(test_acc_list)}')
 """
-"""
+"""""
 # Random forest classifier
 
 train_acc_list = np.array([])
@@ -658,22 +668,24 @@ for i in range(10):
     # Shuffle the rows of the dataframe
     df_shuffle = df.sample(frac=1)
 
-    X_test = df_shuffle.iloc[0:200]
+    X_test = df_shuffle.iloc[0:120]
     X_train = df_shuffle.drop(X_test.index)
     Y_test = X_test['Lead']
     Y_train = X_train['Lead']
     X_test = X_test.drop(['Lead'], axis=1)
     X_train = X_train.drop(['Lead'], axis=1)
     X_test = X_test.drop(
-        ['Mean Age Male', 'Gross', 'Year', 'Age Lead', 'Mean Age Female', 'Total words', 'Age Co-Lead'], axis=1)
+        ['Difference in words lead and co-lead', 'Year', 'Age Co-Lead',
+         'Number words male', 'Gross', 'Total words', 'Number words female'], axis=1)
     X_train = X_train.drop(
-        ['Mean Age Male', 'Gross', 'Year', 'Age Lead', 'Mean Age Female', 'Total words', 'Age Co-Lead'], axis=1)
+        ['Difference in words lead and co-lead', 'Year', 'Age Co-Lead',
+         'Number words male', 'Gross', 'Total words', 'Number words female'], axis=1)
 
     # parameters, every combination will be tested for the best result.
     param_grid = {
         'criterion': ['entropy'],
-        'n_estimators': [200],
-        'max_depth': [15],
+        'n_estimators': [100],
+        'max_depth': [20],
         'min_samples_split': [5],
         # 'bootstrap': [False],
        # 'warm_start':[False],
@@ -948,3 +960,224 @@ print(f'Average train accuracy = {np.mean(train_acc_list)}')
 print(f'Average score = {np.mean(score_list)}')
 print(f'Average test accuracy = {np.mean(test_acc_list)}')
 """
+
+# create subsets and predict separately for test prediction
+# This part was changed to make the final test prediction.
+# To go back, change to test_df =df_test, and go back to the top and remove comments 37-45.
+test_df = pd.read_csv(r'C:\Users\mariu\PycharmProjects\machineLearning\test.csv')  # read in data in a panda dataframe
+test_df['lead_colead_age_diff'] = test_df['Age Lead'] - test_df['Age Co-Lead']
+
+# split in subsets, predict separately with math
+single_act = test_df[(test_df['Number of female actors'] == 1) | (test_df['Number of male actors'] == 1)]
+test_df = test_df.drop(single_act.index)
+
+
+# words
+words_male = np.array(test_df['Number words male'])
+words_female = np.array(test_df['Number words female'])
+lead_word = np.array(test_df['Number of words lead'])
+word_diff = np.array(test_df['Difference in words lead and co-lead'])
+colead_word = lead_word - word_diff
+
+# actors
+m_actors = np.array(test_df['Number of male actors'])
+f_actors = np.array(test_df['Number of female actors'])
+actor_diff = m_actors - f_actors
+
+# age
+lead_age = np.array(test_df['Age Lead'])
+co_lead_age = np.array(test_df['Age Co-Lead'])
+age_difference = lead_age - co_lead_age
+
+# female words
+female_colead_diff = words_female - colead_word  # if negative lead = female
+male_colead_diff = words_male - colead_word  # if negative lead = male or maybe <100
+avg_male_word = male_colead_diff / (m_actors - 1)
+avg_female_word = female_colead_diff / (f_actors - 1)
+
+# criterion for splits
+mask2 = (avg_female_word < 100) | (avg_female_word > colead_word)  # Lead female
+mask3 = (avg_male_word < 100) | (avg_male_word > colead_word)  # Lead male
+
+# subsets
+subset1 = single_act
+subset2 = test_df[mask2]
+subset3 = test_df[mask3]
+
+# drop subsets (1 is already dropped)
+test_df = test_df.drop(subset2.index)
+test_df = test_df.drop(subset3.index)
+
+# age diff
+m_actors = np.array(test_df['Number of male actors'])
+f_actors = np.array(test_df['Number of female actors'])
+actor_diff = m_actors - f_actors
+lead_age = np.array(test_df['Age Lead'])
+co_lead_age = np.array(test_df['Age Co-Lead'])
+age_difference = lead_age - co_lead_age
+
+# last criterion
+mask4 = (actor_diff < 0) & (
+        age_difference < -1)  # Lead probably a female, 0.97%. Might be overfitting. Try with and without it. create a dummy instead?
+subset4 = test_df[mask4]
+test_df = test_df.drop(subset4.index)
+
+# prediction 1
+words_male = np.array(subset1['Number words male'])
+words_female = np.array(subset1['Number words female'])
+number_men = np.array(subset1['Number of male actors'])
+predictions1 = np.where((words_female == 0) | ((words_male != 0) & (number_men == 1)), 'Female', 'Male')
+
+# prediction 2, 3, 4
+predictions2 = np.full(subset2.shape[0], 'Female')
+predictions3 = np.full(subset3.shape[0], 'Male')
+predictions4 = np.full(subset4.shape[0], 'Female')
+
+# count
+removed_count = predictions3.shape[0] + predictions2.shape[0] + predictions1.shape[0] + predictions4.shape[0]
+print(
+    f'{predictions1.shape[0]} + {predictions2.shape[0]} + {predictions3.shape[0]} + {predictions4.shape[0]} = {removed_count}')
+
+print(f'{test_df.shape[0]} + {removed_count} = {removed_count + test_df.shape[0]}')
+print('total: ')
+print(removed_count + test_df.shape[0])
+
+# This part was used before the final test predictions
+"""
+# subset 1 prediction
+print(f'subset 1:')
+y_test = np.array(subset1['Lead'])
+accuracy1 = np.mean(predictions1 == y_test)
+print(f'accuracy: {accuracy1} ')
+conf_matrix = pd.crosstab(predictions1, y_test)
+print(f'{conf_matrix}\n')
+
+# subset 2 prediction
+print(f'subset 2:')
+y_test = np.array(subset2['Lead'])
+accuracy2 = np.mean(predictions2 == y_test)
+print(f'accuracy: {accuracy2} ')
+conf_matrix = pd.crosstab(predictions2, y_test)
+print(f'{conf_matrix}\n')
+
+# subset 3 prediction
+print(f'subset 3:')
+y_test = np.array(subset3['Lead'])
+accuracy3 = np.mean(predictions3 == y_test)
+print(f'accuracy: {accuracy3} ')
+conf_matrix = pd.crosstab(predictions3, y_test)
+print(f'{conf_matrix}\n')
+
+# subset 4 prediction
+print(f'subset 4:')
+y_test = np.array(subset4['Lead'])
+accuracy4 = np.mean(predictions4 == y_test)
+print(f'accuracy: {accuracy4} ')
+conf_matrix = pd.crosstab(predictions4, y_test)
+print(f'{conf_matrix}\n')
+
+"""
+
+# Model prediction
+print(f'main set prediction:')
+model = RandomForestClassifier(criterion='entropy', max_depth=5, min_samples_split=15)
+df = df.drop(
+    ['Mean Age Male', 'Age Lead', 'Age Co-Lead',
+     'Difference in words lead and co-lead', 'Number words male',
+     'Number of words lead', 'Total words', 'Mean Age Female',
+     'Number words female'], axis=1)
+
+test_df = test_df.drop(['Mean Age Male', 'Age Lead', 'Age Co-Lead',
+                        'Difference in words lead and co-lead', 'Number words male',
+                        'Number of words lead', 'Total words', 'Mean Age Female',
+                        'Number words female'], axis=1)
+
+
+data_frame = df
+x_test = test_df
+x_train = df
+#y_test = x_test['Lead']
+y_train = x_train['Lead']
+#x_test = x_test.drop(['Lead'], axis=1)
+x_train = x_train.drop(['Lead'], axis=1)
+# Use x_train and x_test as the training and validation sets, respectively
+
+# naive accuracy
+"""
+z = np.zeros(y_test.shape[0])
+naive_p = np.where(z == 0, 'Male', 'Male')
+naive_a = np.mean(naive_p == y_test)
+print(naive_a)
+"""
+
+# model fit
+model.fit(x_train, y_train)
+
+# prediction, probability
+prediction_probability = model.predict_proba(x_test)
+prediction = np.empty(len(x_test), dtype=object)
+prediction = np.where(prediction_probability[:, 0] > 0.5, 'Female', 'Male')
+
+
+# Accuracy and confusion matrix
+"""
+accuracy = np.mean(prediction == y_test)
+conf_matrix = pd.crosstab(prediction, y_test)
+print(f'accuracy: {accuracy} ')
+print(f'score: {model.score(x_test, y_test)}')
+print(f'Naive accuracy: {naive_a}')
+print(f'confusion matrix:\n{conf_matrix}')
+"""
+
+# add predictions
+subset1['prediction'] = predictions1
+subset2['prediction'] = predictions2
+subset3['prediction'] = predictions3
+subset4['prediction'] = predictions4
+test_df['prediction'] = prediction
+
+# keep prediction and class
+"""
+subset1 = subset1[['Lead', 'prediction']]
+subset2 = subset2[['Lead', 'prediction']]
+subset3 = subset3[['Lead', 'prediction']]
+subset4 = subset4[['Lead', 'prediction']]
+test_df = test_df[['Lead', 'prediction']]
+"""
+
+# combine predictions
+combined_df = pd.concat([subset1, subset2, subset3, subset4, test_df], axis=0)
+combined_df = combined_df.sort_index()
+combined_df = combined_df.drop(['Mean Age Male', 'Age Lead', 'Age Co-Lead',
+                        'Difference in words lead and co-lead', 'Number words male',
+                        'Number of words lead', 'Total words', 'Mean Age Female',
+                        'Number words female'], axis=1)
+
+
+# Final prediction
+prediction = np.array(combined_df['prediction'])
+
+# print results
+"""
+#y_test = np.array(combined_subset['Lead'])
+y_test = y_safety
+# Accuracy and confusion matrix
+accuracy = np.mean(prediction == y_test)
+conf_matrix = pd.crosstab(prediction, y_test)
+print(f'accuracy: {accuracy} ')
+print(f'Naive accuracy: {naive_a}')
+print(f'confusion matrix:\n{conf_matrix}')
+"""
+
+# Save predictions in csv file
+prediction = np.where(prediction == 'Female', 1, 0)
+
+test_prediction_list = prediction.tolist()
+print(test_prediction_list)
+
+"""
+with open('predictions.csv', mode='w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(test_prediction_list)
+"""
+
